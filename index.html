@@ -20,7 +20,7 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; font: 15px/1.55 var(--sans); background: var(--bg); color: var(--fg); -webkit-font-smoothing: antialiased; }
-  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 24px 72px; }
+  .wrap { max-width: 1440px; margin: 0 auto; padding: 0 24px 72px; }
   @media (max-width: 640px) { .wrap { padding: 0 16px 48px; } }
   h1, h2 { font-family: var(--serif); font-weight: 600; letter-spacing: -.01em; }
   h1 { font-size: 30px; margin: 0; line-height: 1.15; }
@@ -35,7 +35,7 @@
 
   /* Top bar */
   .topbar { background: var(--primary); color: #fff; }
-  .topbar .inner { max-width: 1240px; margin: 0 auto; padding: 28px 24px 30px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; justify-content: space-between; }
+  .topbar .inner { max-width: 1440px; margin: 0 auto; padding: 28px 24px 30px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; justify-content: space-between; }
   .eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #D6B25E; font-weight: 600; margin-bottom: 6px; }
   .topbar .sub { color: #D6D3D1; font-size: 14px; margin-top: 6px; max-width: 560px; }
   .top { display: none; }
@@ -97,8 +97,12 @@
   .filters { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; font-size: 14px; }
   .filters input { width: 16px; height: 16px; accent-color: var(--accent); }
   .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow); }
-  table { width: 100%; border-collapse: collapse; min-width: 1000px; }
-  th, td { text-align: left; vertical-align: top; padding: 16px; border-bottom: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  @media (max-width: 900px) { table { min-width: 860px; } }
+  td { overflow-wrap: break-word; }
+  td .badge { white-space: normal; }
+  col.c-contract { width: 17%; } col.c-supplier { width: 13%; } col.c-amount { width: 22%; } col.c-delivery { width: 22%; } col.c-pending { width: 26%; }
+  th, td { text-align: left; vertical-align: top; padding: 14px 12px; border-bottom: 1px solid var(--border); }
   tbody tr { transition: background .15s var(--ease); }
   tbody tr:hover { background: #FCFBFA; }
   tr:last-child td { border-bottom: 0; }
@@ -203,7 +207,8 @@
         <label><input type="checkbox" id="onlyAttention"> Только требующие внимания</label>
       </div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Договор и документы</th><th>Поставщик</th><th>Сумма, руб.</th><th>Срок поставки</th><th>Не согласовано (не учтено)</th><th>Статус проверки</th></tr></thead>
+        <colgroup><col class="c-contract"><col class="c-supplier"><col class="c-amount"><col class="c-delivery"><col class="c-pending"></colgroup>
+        <thead><tr><th>Договор и статус</th><th>Поставщик</th><th>Сумма, руб.</th><th>Срок поставки</th><th>Не согласовано (не учтено)</th></tr></thead>
         <tbody id="rows"></tbody>
       </table></div>
     </section>
@@ -296,14 +301,13 @@
   function renderRows() {
     const rows = registry.rows.filter((r) => !$('onlyAttention').checked || needsAttention(r));
     $('rows').innerHTML = rows.length ? rows.map((r) => `<tr>
-      <td><div class="num">${esc(r.number)}</div>
-        <div class="small muted">${[r.fileName, ...r.related.map((x) => x.fileName)].map(esc).join('<br>')}</div></td>
+      <td><div class="stack"><div class="num">${esc(r.number)}</div>${statusCell(r)}
+        <div class="small muted">${[r.fileName, ...r.related.map((x) => x.fileName)].map(esc).join('<br>')}</div></div></td>
       <td><div class="stack">${r.supplier.value ? `<span>${esc(r.supplier.value)}</span>` : '<span class="nodata">нет данных</span>'}${srcBtn(r.supplier.source)}</div></td>
       <td>${fieldCell('amount', r.amount, r)}</td>
       <td>${fieldCell('delivery', r.delivery, r)}</td>
-      <td>${pendingCell(r)}</td>
-      <td>${statusCell(r)}</td></tr>`).join('')
-      : `<tr><td colspan="6" class="muted">${registry.rows.length ? 'Все договоры подтверждены — нечего показать.' : 'Среди загруженных файлов договоры не найдены.'}</td></tr>`;
+      <td>${pendingCell(r)}</td></tr>`).join('')
+      : `<tr><td colspan="5" class="muted">${registry.rows.length ? 'Все договоры подтверждены — нечего показать.' : 'Среди загруженных файлов договоры не найдены.'}</td></tr>`;
   }
 
   function renderSummary() {
