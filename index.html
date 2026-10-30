@@ -4,130 +4,180 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Сверка договоров поставки</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap&subset=cyrillic" rel="stylesheet">
 <style>
   :root {
-    --bg: #f4f5f7; --surface: #fff; --fg: #17181c; --muted: #6a6f7a; --line: #e3e5ea;
-    --accent: #2457d6; --accent-bg: #edf2ff;
-    --ok: #137a3a; --ok-bg: #e8f6ee;
-    --warn: #a35200; --warn-bg: #fff4e0;
-    --bad: #b42318; --bad-bg: #fdecea;
-    --hl: #fff1a6; --radius: 10px;
+    --primary: #1C1917; --secondary: #44403C; --accent: #A16207; --accent-soft: #FBF5E6; --accent-line: #E9D9AE;
+    --bg: #FAFAF9; --card: #FFFFFF; --fg: #0C0A09; --muted: #57534E; --border: #E7E5E4; --border-strong: #D6D3D1;
+    --ok: #15803D; --ok-bg: #ECFDF3; --warn: #A15C07; --warn-bg: #FFF7E8; --bad: #B91C1C; --bad-bg: #FEF2F2;
+    --info: #1D4ED8; --info-bg: #EFF4FF; --hl: #FDF1C7;
+    --serif: "EB Garamond", Georgia, "Times New Roman", serif;
+    --sans: Inter, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --r-sm: 8px; --r: 14px; --shadow: 0 1px 2px rgba(28,25,23,.04), 0 8px 24px -12px rgba(28,25,23,.12);
+    --ease: cubic-bezier(.2,.8,.2,1);
   }
   * { box-sizing: border-box; }
-  body { margin: 0; font: 15px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--fg); }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 60px; }
-  h1 { font-size: 22px; margin: 0; }
-  h2 { font-size: 17px; margin: 0 0 12px; }
+  body { margin: 0; font: 15px/1.55 var(--sans); background: var(--bg); color: var(--fg); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 0 24px 72px; }
+  @media (max-width: 640px) { .wrap { padding: 0 16px 48px; } }
+  h1, h2 { font-family: var(--serif); font-weight: 600; letter-spacing: -.01em; }
+  h1 { font-size: 30px; margin: 0; line-height: 1.15; }
+  h2 { font-size: 22px; margin: 0 0 14px; }
   .muted { color: var(--muted); }
   .small { font-size: 13px; }
-  section { margin-top: 20px; }
-  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
-  button { font: inherit; cursor: pointer; }
-  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  section { margin-top: 36px; }
+  .icon { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  button, label[for], .doc, .qbtn { cursor: pointer; }
+  button { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
 
-  /* Header + upload */
-  .top { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; justify-content: space-between; }
-  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-  .controls label { font-size: 13px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
-  .controls input[type=date] { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
-  .btn { padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
-  .btn:hover { border-color: #c4c8d0; }
-  .btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .btn.primary:hover { filter: brightness(1.08); }
-  .drop { display: block; border: 2px dashed #c8ccd5; border-radius: var(--radius); padding: 36px 16px; text-align: center; background: var(--surface); transition: border-color .15s, background .15s; cursor: pointer; }
-  .drop.over, .drop:hover { border-color: var(--accent); background: var(--accent-bg); }
-  .drop strong { font-size: 17px; display: block; margin-bottom: 4px; }
-  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 14px; }
-  .steps div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; font-size: 14px; }
-  .steps b { display: block; color: var(--accent); }
-  @media (max-width: 720px) { .steps { grid-template-columns: 1fr; } }
+  /* Top bar */
+  .topbar { background: var(--primary); color: #fff; }
+  .topbar .inner { max-width: 1240px; margin: 0 auto; padding: 28px 24px 30px; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; justify-content: space-between; }
+  .eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: #D6B25E; font-weight: 600; margin-bottom: 6px; }
+  .topbar .sub { color: #D6D3D1; font-size: 14px; margin-top: 6px; max-width: 560px; }
+  .top { display: none; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .controls label { font-size: 12px; color: #D6D3D1; display: flex; flex-direction: column; gap: 4px; letter-spacing: .02em; }
+  .controls input[type=date] { font: inherit; font-size: 14px; padding: 9px 10px; border-radius: var(--r-sm); border: 1px solid #57534E; background: #292524; color: #fff; color-scheme: dark; min-height: 42px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 9px 16px; border-radius: var(--r-sm); border: 1px solid var(--border-strong); background: var(--card); font-weight: 500; font-size: 14px; transition: background .18s var(--ease), border-color .18s var(--ease), transform .18s var(--ease); }
+  .btn:hover { border-color: var(--secondary); }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: #8A5306; }
+  .topbar .btn:not(.primary) { background: transparent; color: #fff; border-color: #57534E; }
+  .topbar .btn:not(.primary):hover { border-color: #A8A29E; }
+
+  /* Empty state */
+  .drop { display: flex; flex-direction: column; align-items: center; gap: 6px; border: 1.5px dashed var(--border-strong); border-radius: var(--r); padding: 56px 20px; text-align: center; background: var(--card); box-shadow: var(--shadow); transition: border-color .2s var(--ease), background .2s var(--ease); }
+  .drop.over, .drop:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .drop .icon { width: 40px; height: 40px; color: var(--accent); stroke-width: 1.5; margin-bottom: 6px; }
+  .drop strong { font-family: var(--serif); font-size: 24px; font-weight: 600; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 16px; }
+  .steps div { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 18px; font-size: 14px; color: var(--muted); }
+  .steps b { display: block; color: var(--fg); font-family: var(--serif); font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+  .steps b span { color: var(--accent); margin-right: 6px; }
+  @media (max-width: 760px) { .steps { grid-template-columns: 1fr; } }
+
+  /* Summary */
+  .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 28px; }
+  .stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 16px 18px; box-shadow: var(--shadow); }
+  .stat .k { font-family: var(--serif); font-size: 34px; font-weight: 600; line-height: 1; }
+  .stat .l { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .stat.ok .k { color: var(--ok); } .stat.warn .k { color: var(--warn); } .stat.bad .k { color: var(--bad); }
+  @media (max-width: 760px) { .summary { grid-template-columns: repeat(2, 1fr); } }
 
   /* Badges */
-  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12.5px; font-weight: 500; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; padding: 3px 10px; border-radius: 999px; white-space: nowrap; line-height: 1.5; }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
   .badge.ok { background: var(--ok-bg); color: var(--ok); }
   .badge.warn { background: var(--warn-bg); color: var(--warn); }
   .badge.bad { background: var(--bad-bg); color: var(--bad); }
-  .badge.info { background: var(--accent-bg); color: var(--accent); }
-  .badge.neutral { background: #eef0f3; color: var(--muted); }
-
-  /* Documents list */
-  .docs { display: flex; flex-wrap: wrap; gap: 8px; }
-  .doc { display: flex; flex-direction: column; gap: 4px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--surface); text-align: left; min-width: 200px; }
-  .doc:hover { border-color: var(--accent); }
-  .doc .name { font-weight: 500; font-size: 14px; }
+  .badge.info { background: var(--info-bg); color: var(--info); }
+  .badge.neutral { background: #F5F5F4; color: var(--muted); }
 
   /* Questions */
-  .qgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
-  .qbtn { text-align: left; padding: 12px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); }
-  .qbtn:hover, .qbtn.active { border-color: var(--accent); background: var(--accent-bg); }
-  .custom { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; font-size: 14px; }
-  .custom select, .custom input { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
-  .answer { margin-top: 14px; padding: 14px 16px; border-left: 4px solid var(--accent); background: var(--accent-bg); border-radius: 0 var(--radius) var(--radius) 0; }
-  .answer .big { font-size: 22px; font-weight: 700; }
-  .answer ul { margin: 6px 0 0; padding-left: 18px; }
+  .qgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .qbtn { text-align: left; padding: 16px 18px; border-radius: var(--r); border: 1px solid var(--border); background: var(--card); transition: border-color .18s var(--ease), box-shadow .18s var(--ease), background .18s var(--ease); min-height: 44px; }
+  .qbtn b { font-family: var(--serif); font-size: 18px; font-weight: 600; display: block; }
+  .qbtn:hover { border-color: var(--accent-line); box-shadow: var(--shadow); }
+  .qbtn.active { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+  .custom { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; font-size: 14px; padding: 12px 14px; background: #F5F5F4; border-radius: var(--r); }
+  .custom select, .custom input { font: inherit; font-size: 14px; min-height: 40px; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--card); }
+  .custom .btn { min-height: 40px; }
+  .answer { margin-top: 16px; padding: 20px 22px; background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--accent); border-radius: var(--r); box-shadow: var(--shadow); animation: rise .25s var(--ease); }
+  .answer .big { font-family: var(--serif); font-size: 34px; font-weight: 600; line-height: 1.15; margin: 2px 0 6px; }
+  .answer ul { margin: 8px 0 0; padding-left: 18px; }
+  .answer li { margin-bottom: 8px; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
   /* Registry */
-  .filters { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; font-size: 14px; }
-  .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
-  table { width: 100%; border-collapse: collapse; min-width: 980px; }
-  th, td { text-align: left; vertical-align: top; padding: 12px; border-bottom: 1px solid var(--line); }
+  .filters { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; font-size: 14px; }
+  .filters input { width: 16px; height: 16px; accent-color: var(--accent); }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--r); background: var(--card); box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+  th, td { text-align: left; vertical-align: top; padding: 16px; border-bottom: 1px solid var(--border); }
+  tbody tr { transition: background .15s var(--ease); }
+  tbody tr:hover { background: #FCFBFA; }
   tr:last-child td { border-bottom: 0; }
-  th { font-size: 12.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); font-weight: 600; background: #fafbfc; }
-  .num { font-weight: 700; font-size: 16px; }
-  .value { font-size: 17px; font-weight: 600; display: block; }
-  .nodata { color: var(--bad); font-weight: 600; }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; background: #F5F5F4; position: sticky; top: 0; }
+  .num { font-family: var(--serif); font-weight: 600; font-size: 20px; }
+  .value { font-family: var(--serif); font-size: 22px; font-weight: 600; display: block; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .nodata { color: var(--bad); }
   .prev { font-size: 13px; color: var(--muted); text-decoration: line-through; }
-  .src { border: 0; background: none; padding: 0; color: var(--accent); font-size: 13px; text-align: left; }
-  .src:hover { text-decoration: underline; }
-  .stack { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
-  .quote-inline { font-size: 12.5px; color: var(--muted); font-style: italic; quotes: "«" "»"; }
-  .proposal { border: 1px dashed #e0b77a; background: #fffaf0; border-radius: 8px; padding: 6px 8px; font-size: 13.5px; width: 100%; }
+  .src { display: inline-flex; align-items: flex-start; gap: 6px; border: 0; background: none; padding: 2px 0; color: var(--accent); font-size: 13px; font-weight: 500; text-align: left; }
+  .src:hover { color: #7A4A05; text-decoration: underline; text-underline-offset: 3px; }
+  .src .icon { width: 14px; height: 14px; margin-top: 3px; }
+  .quote-inline { font-size: 13px; color: var(--secondary); font-style: normal; quotes: "«" "»"; border-left: 2px solid var(--accent-line); padding-left: 8px; display: block; }
+  .stack { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+  .proposal { border: 1px dashed var(--accent-line); background: var(--accent-soft); border-radius: var(--r-sm); padding: 10px 12px; font-size: 13.5px; width: 100%; }
 
-  /* Source drawer */
-  .drawer { position: fixed; top: 0; right: 0; height: 100vh; width: min(560px, 100vw); background: var(--surface); box-shadow: -8px 0 30px rgba(0,0,0,.12); transform: translateX(100%); transition: transform .2s ease; display: flex; flex-direction: column; z-index: 10; }
-  .drawer.open { transform: none; }
-  .drawer header { padding: 16px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; }
-  .drawer .quote { margin: 12px 16px 0; padding: 10px 12px; background: var(--hl); border-radius: 8px; font-size: 14px; }
-  .drawer .text { overflow: auto; padding: 12px 16px 24px; font-size: 14px; }
-  .drawer .text p { margin: 0; padding: 4px 8px; border-radius: 6px; }
-  .drawer .text p .n { color: var(--muted); display: inline-block; width: 2em; font-size: 12px; }
-  .drawer .text p.hl { background: #fff8d1; }
-  .drawer mark { background: var(--hl); padding: 0 1px; }
-  .scrim { position: fixed; inset: 0; background: rgba(0,0,0,.2); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 9; }
+  /* Documents */
+  .docs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+  .doc { display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--border); border-radius: var(--r); padding: 14px 16px; background: var(--card); text-align: left; color: var(--fg); transition: border-color .18s var(--ease), box-shadow .18s var(--ease); }
+  .doc:hover { border-color: var(--accent-line); box-shadow: var(--shadow); text-decoration: none; color: var(--fg); }
+  .doc .name { font-weight: 600; font-size: 14px; display: flex; gap: 8px; align-items: center; }
+  .doc .name .icon { color: var(--accent); margin: 0; }
+
+  /* Drawer */
+  .drawer { position: fixed; top: 0; right: 0; height: 100vh; width: min(600px, 100vw); background: var(--card); box-shadow: -24px 0 60px -20px rgba(28,25,23,.35); transform: translateX(100%); transition: transform .28s var(--ease); display: flex; visibility: hidden; flex-direction: column; z-index: 10; }
+  .drawer.open { transform: none; visibility: visible; }
+  .drawer header { padding: 20px 22px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+  .drawer header b { font-family: var(--serif); font-size: 22px; font-weight: 600; display: block; margin: 2px 0 6px; }
+  .drawer .quote { margin: 16px 22px 0; padding: 12px 14px; background: var(--hl); border-radius: var(--r-sm); font-size: 14px; border-left: 3px solid var(--accent); }
+  .drawer .text { overflow: auto; padding: 14px 22px 32px; font-size: 14.5px; }
+  .drawer .text p { margin: 0; padding: 6px 10px; border-radius: var(--r-sm); }
+  .drawer .text p .n { color: #A8A29E; display: inline-block; width: 2.2em; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .drawer .text p.hl { background: #FFFBEB; box-shadow: inset 3px 0 0 var(--accent); }
+  .drawer mark { background: var(--hl); padding: 0 2px; border-radius: 3px; }
+  .drawer .close { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-sm); border: 1px solid var(--border); background: var(--card); }
+  .scrim { position: fixed; inset: 0; background: rgba(12,10,9,.35); backdrop-filter: blur(2px); opacity: 0; pointer-events: none; transition: opacity .25s var(--ease); z-index: 9; }
   .scrim.open { opacity: 1; pointer-events: auto; }
   .hidden { display: none !important; }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before { transition: none !important; animation: none !important; } }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top">
-    <div>
-      <h1>Сверка условий договоров поставки</h1>
-      <div class="muted small">Сумма и срок по каждому договору — с цитатой из документа, на основании которого они действуют.</div>
-    </div>
-    <div class="controls">
-      <label>Дата проверки<input type="date" id="checkDate" value="2026-03-10"></label>
-      <button class="btn primary" id="addBtn">+ Добавить файлы</button>
-      <button class="btn hidden" id="clear">Очистить</button>
-      <input type="file" id="files" accept=".txt,text/plain" multiple hidden>
-    </div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+</svg>
+<header class="topbar"><div class="inner">
+  <div>
+    <div class="eyebrow">Закупки · Сверка условий</div>
+    <h1>Договоры поставки</h1>
+    <div class="sub">Действующие сумма и срок по каждому договору — с точной цитатой из документа-основания.</div>
   </div>
+  <div class="controls">
+    <label for="checkDate">Дата проверки<input type="date" id="checkDate" value="2026-03-10"></label>
+    <button class="btn hidden" id="clear">Очистить</button>
+    <button class="btn primary" id="addBtn"><svg class="icon"><use href="#i-plus"/></svg>Добавить файлы</button>
+    <input type="file" id="files" accept=".txt,text/plain" multiple hidden>
+  </div>
+</div></header>
+<div class="wrap">
 
   <!-- Empty state -->
   <section id="empty">
     <label class="drop" id="drop" for="files">
-      <strong>Перетащите сюда TXT-файлы или нажмите, чтобы выбрать</strong>
+      <svg class="icon"><use href="#i-upload"/></svg>
+      <strong>Перетащите TXT-файлы сюда</strong>
+      <span class="muted">или нажмите, чтобы выбрать на компьютере</span>
       <span class="muted">Договоры, допсоглашения, письма поставщиков — можно все сразу, в любом порядке</span>
     </label>
     <div class="steps">
-      <div><b>1. Загрузите документы</b>Тип и статус каждого файла определяются по его тексту, а не по имени.</div>
-      <div><b>2. Смотрите реестр</b>Учитываются только подписанные допсоглашения, вступившие в силу к дате проверки.</div>
-      <div><b>3. Проверяйте источник</b>Нажмите «Источник» — откроется документ с выделенной цитатой.</div>
+      <div><b><span>01</span>Загрузите документы</b>Тип и статус каждого файла определяются по его тексту, а не по имени.</div>
+      <div><b><span>02</span>Смотрите реестр</b>Учитываются только подписанные допсоглашения, вступившие в силу к дате проверки.</div>
+      <div><b><span>03</span>Проверяйте источник</b>Нажмите «Источник» — откроется документ с выделенной цитатой.</div>
     </div>
   </section>
 
   <div id="main" class="hidden">
+    <div class="summary" id="summary"></div>
     <section>
       <h2>Быстрые вопросы</h2>
       <div class="qgrid">
@@ -170,7 +220,7 @@
 <aside class="drawer" id="drawer" aria-hidden="true">
   <header>
     <div><div class="small muted">Исходный документ</div><b id="dName"></b><div id="dStatus"></div></div>
-    <button class="btn" id="dClose" aria-label="Закрыть">✕</button>
+    <button class="close" id="dClose" aria-label="Закрыть"><svg class="icon"><use href="#i-x"/></svg></button>
   </header>
   <div class="quote" id="dQuote"></div>
   <div class="text" id="dText"></div>
@@ -202,7 +252,7 @@
 
   function srcBtn(source, label) {
     if (!source) return '<span class="muted small">источник не найден</span>';
-    return `<button class="src" data-file="${esc(source.file)}" data-p="${source.paragraph}" data-quote="${esc(source.quote)}">📄 ${esc(label || 'Источник')}: ${esc(source.file)}, абз. ${source.paragraph}</button>`;
+    return `<button class="src" data-file="${esc(source.file)}" data-p="${source.paragraph}" data-quote="${esc(source.quote)}"><svg class="icon"><use href="#i-file"/></svg><span>${esc(label || 'Источник')}: ${esc(source.file)}, абз. ${source.paragraph}</span></button>`;
   }
 
   const quoteHtml = (source) => (source ? `<q class="quote-inline">${esc(source.quote)}</q>` : '');
@@ -256,6 +306,16 @@
       : `<tr><td colspan="6" class="muted">${registry.rows.length ? 'Все договоры подтверждены — нечего показать.' : 'Среди загруженных файлов договоры не найдены.'}</td></tr>`;
   }
 
+  function renderSummary() {
+    const rows = registry.rows;
+    const review = rows.filter((r) => r.issues.length).length;
+    const pending = rows.filter((r) => pendingOf(r).length).length;
+    const ok = rows.length - rows.filter(needsAttention).length;
+    const stat = (cls, k, l) => `<div class="stat ${cls}"><div class="k">${k}</div><div class="l">${l}</div></div>`;
+    $('summary').innerHTML = stat('', rows.length, 'договоров в реестре') + stat('ok', ok, 'подтверждены полностью')
+      + stat('warn', pending, 'с несогласованными предложениями') + stat('bad', review, 'требуют проверки');
+  }
+
   function docStatus(d) {
     if (d.type === 'contract') return d.signature === 'signed' ? badge('ok', 'Подписан') : badge('bad', 'Подписание не подтверждено');
     const s = STN.documentStatus(d, registry.checkDate);
@@ -265,7 +325,7 @@
   function renderDocs() {
     $('docCount').textContent = `· ${registry.docs.length}`;
     $('docs').innerHTML = registry.docs.map((d) => `<button class="doc src" data-file="${esc(d.fileName)}" data-p="1" data-quote="">
-      <span class="name">${esc(d.fileName)}</span>
+      <span class="name"><svg class="icon"><use href="#i-file"/></svg>${esc(d.fileName)}</span>
       <span class="small muted">${TYPE_LABEL[d.type]}${d.contractRefs.length ? ' · ' + esc(d.contractRefs.join(', ')) : ''}</span>
       <span>${docStatus(d)}</span></button>`).join('');
     $('unlinked').innerHTML = registry.unlinked.length
@@ -333,6 +393,7 @@
     registry = STN.buildRegistry(uploaded, $('checkDate').value);
     $('asOf').textContent = `· на ${fmtDate(registry.checkDate)}`;
     $('qContract').innerHTML = registry.rows.map((r) => `<option>${esc(r.number)}</option>`).join('');
+    renderSummary();
     renderRows();
     renderDocs();
     if (lastQuestion) ask(lastQuestion); else $('answer').innerHTML = '';
