@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Сверка договоров поставки</title>
+<style>
+  :root { --bg:#fafafa; --fg:#1d1d1f; --muted:#6b6b70; --line:#e2e2e6; --accent:#2457d6; --warn:#b45309; --warn-bg:#fff7e6; --ok:#15803d; --hl:#fff2a8; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.45 -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--fg); }
+  header, main { max-width:1200px; margin:0 auto; padding:16px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:16px; margin:24px 0 8px; }
+  .muted { color:var(--muted); }
+  .bar { display:flex; flex-wrap:wrap; gap:12px; align-items:center; padding:12px; background:#fff; border:1px solid var(--line); border-radius:8px; }
+  .drop { border:2px dashed var(--line); padding:10px 14px; border-radius:8px; }
+  .drop.over { border-color:var(--accent); }
+  table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); }
+  th, td { text-align:left; vertical-align:top; padding:8px; border-bottom:1px solid var(--line); }
+  th { background:#f2f2f5; font-weight:600; }
+  .val { font-weight:600; }
+  .nodata { color:var(--warn); font-weight:600; }
+  .src { display:block; font-size:12px; color:var(--accent); cursor:pointer; background:none; border:0; padding:0; text-align:left; }
+  .src:hover { text-decoration:underline; }
+  .tag { display:inline-block; font-size:12px; padding:1px 6px; border-radius:4px; background:#eef2ff; margin:2px 0; }
+  .tag.warn { background:var(--warn-bg); color:var(--warn); }
+  .tag.ok { background:#ecfdf3; color:var(--ok); }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px; }
+  .viewer { max-height:460px; overflow:auto; font-family: ui-monospace, Menlo, monospace; font-size:12.5px; }
+  .viewer p { margin:0; padding:3px 6px; white-space:pre-wrap; }
+  .viewer p .n { color:var(--muted); display:inline-block; width:2.5em; }
+  .viewer p.hl { background:var(--hl); }
+  .viewer mark { background:#ffd54a; }
+  button.q { margin:0 6px 6px 0; }
+  .answer { margin-top:8px; padding:10px; background:#f6f8ff; border-radius:6px; }
+  ul { margin:4px 0; padding-left:18px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Сверка условий договоров поставки</h1>
+  <div class="muted">Прототип. Значения извлекаются правилами из загруженного текста; у каждого — файл, цитата и ссылка на абзац.</div>
+</header>
+<main>
+  <div class="bar">
+    <label class="drop" id="drop">Загрузить TXT-файлы: <input type="file" id="files" accept=".txt,text/plain" multiple></label>
+    <label>Дата проверки: <input type="date" id="checkDate" value="2026-03-10"></label>
+    <button id="clear">Очистить</button>
+    <span id="loaded" class="muted">Файлы не загружены</span>
+  </div>
+
+  <h2>Реестр договоров</h2>
+  <div id="registry" class="muted">Загрузите договоры и связанные документы.</div>
+  <div id="unlinked"></div>
+
+  <div class="grid">
+    <section class="panel">
+      <h2 style="margin-top:0">Вопросы</h2>
+      <div>
+        <button class="q" data-q="field" data-c="STN-101" data-f="delivery">Срок по STN-101 на дату проверки</button>
+        <button class="q" data-q="field" data-c="STN-102" data-f="amount">Сумма STN-102</button>
+        <button class="q" data-q="field" data-c="STN-103" data-f="amount">Сумма STN-103</button>
+        <button class="q" data-q="before" data-d="2026-04-01">Поставка раньше 01.04.2026 + несогласованные изменения</button>
+      </div>
+      <div style="margin-top:8px">
+        Свой вопрос: договор <select id="qContract"></select>
+        поле <select id="qField"><option value="amount">сумма</option><option value="delivery">срок поставки</option></select>
+        <button id="qAsk">Ответить</button>
+        · поставка раньше <input type="date" id="qBefore" value="2026-04-01"> <button id="qBeforeBtn">Найти</button>
+      </div>
+      <div id="answer"></div>
+    </section>
+    <section class="panel">
+      <h2 style="margin-top:0">Исходный документ <span id="viewerName" class="muted"></span></h2>
+      <div id="viewer" class="viewer muted">Нажмите на ссылку-источник, чтобы открыть абзац.</div>
+    </section>
+  </div>
+</main>
+
+<script src="src/parser.js"></script>
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  let uploaded = [];   // [{name, text}]
+  let registry = null;
+
+  const FIELD_LABEL = { amount: 'Сумма', delivery: 'Срок поставки' };
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const fmtMoney = (v) => v.toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ₽';
+  const fmtDate = (iso) => iso.split('-').reverse().join('.');
+  const fmtValue = (field, v) => v === null ? '<span class="nodata">нет данных</span>'
+    : `<span class="val">${esc(field === 'amount' ? fmtMoney(v) : fmtDate(v))}</span>`;
+
+  function srcLink(source) {
+    if (!source) return '<span class="muted" style="font-size:12px">источник не найден</span>';
+    return `<button class="src" data-file="${esc(source.file)}" data-p="${source.paragraph}" data-quote="${esc(source.quote)}">
+      ${esc(source.file)}, абз. ${source.paragraph}: «${esc(source.quote)}»</button>`;
+  }
+
+  function fieldCell(field, f) {
+    let html = fmtValue(field, f.value) + srcLink(f.source);
+    if (f.value === null && f.note) html += `<div class="tag warn">${esc(f.note)}</div>`;
+    if (f.changedBy) {
+      const prev = f.history[f.history.length - 1];
+      html += `<div class="tag ok">Изменено: ${esc(f.changedBy)}</div>`;
+      if (prev) html += `<div class="muted" style="font-size:12px">было: ${fmtValue(field, prev.value)} ${srcLink(prev.source)}</div>`;
+    }
+    return html;
+  }
+
+  function pendingCell(row) {
+    if (!row.pending.length) return '<span class="muted">нет</span>';
+    return row.pending.map((p) => `<div><span class="tag warn">${esc(p.status.label)}</span>
+      ${p.proposed.length ? '<ul>' + p.proposed.map((x) => `<li>${FIELD_LABEL[x.field]}: ${fmtValue(x.field, x.value)} ${srcLink(x.source)}</li>`).join('') + '</ul>'
+        : `<div class="muted" style="font-size:12px">${esc(p.fileName)}: изменений суммы/срока не найдено</div>`}</div>`).join('');
+  }
+
+  function renderRegistry() {
+    if (!registry || !registry.rows.length) {
+      $('registry').innerHTML = uploaded.length ? '<span class="nodata">Среди загруженных файлов договоры не распознаны.</span>' : 'Загрузите договоры и связанные документы.';
+    } else {
+      $('registry').innerHTML = `<table><thead><tr><th>Договор</th><th>Поставщик</th><th>Сумма, ₽</th><th>Срок поставки на ${fmtDate(registry.checkDate)}</th><th>Несогласованные изменения / сведения для проверки</th><th>Требует проверки</th></tr></thead><tbody>
+      ${registry.rows.map((r) => `<tr>
+        <td class="val">${esc(r.number)}<div class="muted" style="font-size:12px">${esc(r.fileName)}</div>
+          ${r.related.map((x) => `<div style="font-size:12px">↳ ${esc(x.fileName)}</div>`).join('')}</td>
+        <td>${r.supplier.value ? esc(r.supplier.value) : '<span class="nodata">нет данных</span>'}${srcLink(r.supplier.source)}</td>
+        <td>${fieldCell('amount', r.amount)}</td>
+        <td>${fieldCell('delivery', r.delivery)}</td>
+        <td>${pendingCell(r)}</td>
+        <td>${r.issues.length ? r.issues.map((i) => `<div class="tag warn">${esc(i)}</div>`).join('') : '<span class="tag ok">нет замечаний</span>'}</td>
+      </tr>`).join('')}</tbody></table>`;
+    }
+    $('unlinked').innerHTML = registry && registry.unlinked.length
+      ? '<h2>Документы без привязки к договору</h2>' + registry.unlinked.map((u) => `<div class="tag warn">${esc(u.fileName)}: ${esc(u.reason)}</div>`).join(' ') : '';
+    $('qContract').innerHTML = (registry ? registry.rows : []).map((r) => `<option>${esc(r.number)}</option>`).join('');
+  }
+
+  function answerField(number, field) {
+    const row = registry && registry.rows.find((r) => r.number === number);
+    if (!row) return `<b>${esc(number)}</b>: договор среди загруженных документов не найден — <span class="nodata">нет данных</span>.`;
+    const f = row[field];
+    const unagreed = row.pending.flatMap((p) => p.proposed.filter((x) => x.field === field).map((x) => ({ ...x, status: p.status })));
+    return `<b>${FIELD_LABEL[field]} по ${esc(number)} на ${fmtDate(registry.checkDate)}:</b> ${fieldCell(field, f)}
+      ${unagreed.length ? '<div>Не учтено (не согласовано):<ul>' + unagreed.map((u) => `<li>${fmtValue(field, u.value)} — ${esc(u.status.label)} ${srcLink(u.source)}</li>`).join('') + '</ul></div>' : ''}`;
+  }
+
+  function answerBefore(date) {
+    if (!registry) return 'Нет загруженных документов.';
+    const hits = STN.deliveriesBefore(registry, date);
+    const unknown = registry.rows.filter((r) => r.delivery.value === null);
+    let html = `<b>Поставка раньше ${fmtDate(date)} (на ${fmtDate(registry.checkDate)}):</b>`;
+    html += hits.length ? '<ul>' + hits.map(({ row, unagreed }) => `<li><b>${esc(row.number)}</b> — ${fmtValue('delivery', row.delivery.value)} ${srcLink(row.delivery.source)}
+      ${unagreed.length ? unagreed.map((u) => `<div class="tag warn">Несогласованное изменение срока: ${fmtValue('delivery', u.value)} — ${esc(u.status.label)}</div>${srcLink(u.source)}`).join('') : '<div class="tag ok">Несогласованных изменений срока нет</div>'}</li>`).join('') + '</ul>'
+      : ' таких договоров нет.';
+    if (unknown.length) html += `<div class="tag warn">Срок неизвестен (нет данных): ${unknown.map((r) => esc(r.number)).join(', ')}</div>`;
+    return html;
+  }
+
+  function showSource(file, paragraph, quote) {
+    const doc = registry && registry.docs.find((d) => d.fileName === file);
+    if (!doc) return;
+    $('viewerName').textContent = '— ' + file;
+    $('viewer').classList.remove('muted');
+    $('viewer').innerHTML = doc.paragraphs.map((p) => {
+      let text = esc(p.text);
+      if (p.n === paragraph && quote) text = text.replace(esc(quote), `<mark>${esc(quote)}</mark>`);
+      return `<p id="para-${p.n}" class="${p.n === paragraph ? 'hl' : ''}"><span class="n">${p.n}</span>${text}</p>`;
+    }).join('');
+    const target = $('para-' + paragraph);
+    if (target) target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  function recompute() {
+    registry = uploaded.length ? STN.buildRegistry(uploaded, $('checkDate').value) : null;
+    $('loaded').textContent = uploaded.length ? `Загружено файлов: ${uploaded.length} (${uploaded.map((f) => f.name).join(', ')})` : 'Файлы не загружены';
+    $('answer').innerHTML = '';
+    renderRegistry();
+  }
+
+  async function addFiles(fileList) {
+    const read = await Promise.all([...fileList].map(async (f) => ({ name: f.name, text: await f.text() })));
+    // A re-uploaded file replaces the previous version with the same name.
+    const names = new Set(read.map((f) => f.name));
+    uploaded = [...uploaded.filter((f) => !names.has(f.name)), ...read];
+    recompute();
+  }
+
+  $('files').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+  const drop = $('drop');
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); });
+  $('checkDate').addEventListener('change', recompute);
+  $('clear').addEventListener('click', () => { uploaded = []; recompute(); $('viewer').textContent = ''; });
+
+  document.addEventListener('click', (e) => {
+    const src = e.target.closest('.src');
+    if (src) return showSource(src.dataset.file, +src.dataset.p, src.dataset.quote);
+    const q = e.target.closest('button.q');
+    if (q) $('answer').innerHTML = '<div class="answer">' + (q.dataset.q === 'field' ? answerField(q.dataset.c, q.dataset.f) : answerBefore(q.dataset.d)) + '</div>';
+  });
+  $('qAsk').addEventListener('click', () => { $('answer').innerHTML = '<div class="answer">' + answerField($('qContract').value, $('qField').value) + '</div>'; });
+  $('qBeforeBtn').addEventListener('click', () => { $('answer').innerHTML = '<div class="answer">' + answerBefore($('qBefore').value) + '</div>'; });
+})();
+</script>
+</body>
+</html>
